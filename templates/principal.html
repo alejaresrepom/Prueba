@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página Principal</title>
+    <!-- Agrega la hoja de estilos de Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+    <!-- Agrega la capa de etiquetas en español -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.css">
+    <!-- Agrega la hoja de estilos de Chart.js -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js">
+    <style>
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #tabla-datos {
+            margin-bottom: 20px;
+            border-collapse: collapse;
+        }
+
+        #tabla-datos th,
+        #tabla-datos td {
+            border: 1px solid #dddddd;
+            text-align: center;
+            padding: 8px;
+        }
+
+        #tabla-datos th {
+            background-color: #f2f2f2;
+        }
+
+        #map-container {
+            display: flex;
+        }
+
+        #map,
+        #chart-container {
+            height: 400px;
+            width: 400px;
+            margin-right: 20px;
+        }
+
+        #chart-container {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div>
+            <h2>Datos</h2>
+            <table id="tabla-datos">
+                <thead>
+                    <tr>
+                        <th>Título</th>
+                        <th>Autor</th>
+                        <th>Nacionalidad del autor</th>
+                        <th>Género</th>
+                        <th>Editorial</th>
+                        <th>Ubicación Editorial</th>
+                        <th>Precio</th>
+                        <th>Coordenadas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for libro in datos %}
+                        <tr>
+                            <td>{{ libro['titulo'] }}</td>
+                            <td>{{ libro['autor_nombre'] }}</td>
+                            <td>{{ libro['autor_nacionalidad'] }}</td>
+                            <td>{{ libro['autor_genero'] }}</td>
+                            <td>{{ libro['nombre_editorial'] }}</td>
+                            <td>{{ libro['ubicacion_editorial'] }}</td>
+                            <td>{{ libro['precio'] }}</td>
+                            <!-- Modificado: Se asume que las coordenadas están separadas por un espacio -->
+                            <td>{{ libro['coordenadas_editorial']['latitud'] }}, {{ libro['coordenadas_editorial']['longitud'] }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="map-container">
+            <div id="map"></div>
+            <div id="chart-container">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Importa la biblioteca de Leaflet -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Importa la capa de etiquetas en español -->
+    <script src="https://unpkg.com/leaflet.locatecontrol/dist/L.Control.Locate.min.js" charset="UTF-8"></script>
+    <!-- Importa la biblioteca de Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Crear mapa
+            var map = L.map('map').setView([0, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Añadir capa de etiquetas en español
+            L.control.locate({
+                strings: {
+                    title: "Mostrar mi ubicación"
+                },
+                locateOptions: {
+                    enableHighAccuracy: true
+                }
+            }).addTo(map);
+
+            // Obtener los datos de la tabla
+            var rows = document.querySelectorAll('#tabla-datos tbody tr');
+            var markers = [];
+            var nombresLibros = [];
+            var precios = [];
+
+            // Iterar sobre las filas de la tabla y agregar marcadores al mapa y datos de precios al array
+            rows.forEach(function(row) {
+                var titulo = row.cells[0].textContent;
+                var precio = parseFloat(row.cells[6].textContent);
+                // Modificado: Extracción de coordenadas
+                var coordenadas = row.cells[7].textContent.split(',').map(function(coord) {
+                    return parseFloat(coord.trim());
+                });
+
+                var latitud = coordenadas[0];
+                var longitud = coordenadas[1];
+
+                var marker = L.marker([latitud, longitud]).addTo(map).bindPopup(titulo);
+                markers.push(marker);
+                nombresLibros.push(titulo);
+                precios.push(precio);
+            });
+
+            // Ajustar la vista del mapa para que todos los marcadores sean visibles
+            var group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds());
+
+            // Crear gráfico
+            var ctx = document.getElementById('myChart').getContext('2d');
+            var myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: nombresLibros,
+                    datasets: [{
+                        label: 'Precio',
+                        data: precios,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        }]
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
